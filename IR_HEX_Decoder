@@ -1,0 +1,22 @@
+#include <IRremote.h>
+
+const int IRPIN = 32;
+
+void setup() {
+  Serial.begin(9600);
+  Serial.println("Initializing IR Receiver...");
+  
+  IrReceiver.begin(IRPIN, ENABLE_LED_FEEDBACK);
+  Serial.println("IR Receiver Enabled.");
+}
+
+void loop() {
+  if (IrReceiver.decode()) {
+    Serial.print("Received IR code: ");
+    Serial.println(IrReceiver.decodedIRData.decodedRawData, HEX);
+
+    IrReceiver.resume();
+  }
+
+  delay(100);
+}
