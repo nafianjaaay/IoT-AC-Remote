@@ -32,6 +32,10 @@ const char* password = "irisjuara";
 unsigned long previousMillis = 0;
 unsigned long interval = 30000;
 
+unsigned long firebaseReconnectMillis = 0; // Timestamp untuk mencoba koneksi ulang Firebase
+const unsigned long firebaseReconnectInterval = 10000; // Interval 10 detik untuk mencoba ulang
+bool isFirebaseConnected = false; // Status koneksi Firebase
+
 String InfoFirebase = "Connecting...";
 
 // Define Firebase objects
@@ -89,6 +93,20 @@ void SendToBlynk(){
   Blynk.virtualWrite(V4, InfoFirebase);
 }
 
+void reconnectFirebase() {
+  if (!isFirebaseConnected && millis() - firebaseReconnectMillis >= firebaseReconnectInterval) {
+    firebaseReconnectMillis = millis();
+    Serial.println("Attempting to reconnect to Firebase...");
+
+    if (Firebase.signUp(&configFirebase, &authFirebase, "", "")) {
+      Serial.println("Firebase Reconnected Successfully");
+      isFirebaseConnected = true;
+    } else {
+      Serial.printf("Firebase Reconnect Failed: %s\n", configFirebase.signer.signupError.message.c_str());
+    }
+  }
+}
+
 void setup() {
   irsend.begin();
   Serial.begin(115200);
@@ -112,8 +130,11 @@ void setup() {
 
   if (Firebase.signUp(&configFirebase, &authFirebase, "", "")) {
     Serial.println("Firebase Signup Successful");
+    isFirebaseConnected = true;
+
   } else {
     Serial.printf("Firebase Signup Failed: %s\n", configFirebase.signer.signupError.message.c_str());
+    isFirebaseConnected = false;
   }
 
   Firebase.begin(&configFirebase, &authFirebase);
@@ -212,10 +233,12 @@ void ReceiveFirebase() {
       Serial.print("Error reading Firebase: ");
       Serial.println(fbdo.errorReason());
       InfoFirebase = "Disconnected!";
+      isFirebaseConnected = false; // Tandai Firebase sebagai terputus
     }
   } else {
     InfoFirebase = "Disconnected!";
     Serial.println("Firebase not ready or WiFi disconnected!");
+    isFirebaseConnected = false;
   }
 }
 
@@ -240,4 +263,5 @@ void loop() {
     sendDataPrevMillis = millis();
     ReceiveFirebase();
   }
+  reconnectFirebase();
 }
