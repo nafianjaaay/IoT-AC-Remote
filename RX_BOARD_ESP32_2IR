@@ -48,6 +48,10 @@ const uint16_t kIrLed2 = 33;
 IRsend irsend1(kIrLed1);
 IRsend irsend2(kIrLed2);
 
+unsigned long firebaseReconnectMillis = 0; // Timestamp untuk mencoba koneksi ulang Firebase
+const unsigned long firebaseReconnectInterval = 10000; // Interval 10 detik untuk mencoba ulang
+bool isFirebaseConnected = false; // Status koneksi Firebase
+
 // Data COOLIX untuk suhu tertentu
 uint64_t coolixData30C = 0xB29FB0;  // 30°C (0)
 uint64_t coolixData29C = 0xB29FA0;  // 29°C (1)
@@ -91,6 +95,20 @@ void SendToBlynk(){
   Blynk.virtualWrite(V4, InfoFirebase);
 }
 
+void reconnectFirebase() {
+  if (!isFirebaseConnected && millis() - firebaseReconnectMillis >= firebaseReconnectInterval) {
+    firebaseReconnectMillis = millis();
+    Serial.println("Attempting to reconnect to Firebase...");
+
+    if (Firebase.signUp(&configFirebase, &authFirebase, "", "")) {
+      Serial.println("Firebase Reconnected Successfully");
+      isFirebaseConnected = true;
+    } else {
+      Serial.printf("Firebase Reconnect Failed: %s\n", configFirebase.signer.signupError.message.c_str());
+    }
+  }
+}
+
 void setup() {
   irsend1.begin();
   irsend2.begin();
@@ -115,8 +133,10 @@ void setup() {
 
   if (Firebase.signUp(&configFirebase, &authFirebase, "", "")) {
     Serial.println("Firebase Signup Successful");
+    isFirebaseConnected = true;
   } else {
     Serial.printf("Firebase Signup Failed: %s\n", configFirebase.signer.signupError.message.c_str());
+    isFirebaseConnected = false;
   }
 
   Firebase.begin(&configFirebase, &authFirebase);
@@ -139,60 +159,70 @@ void IRLogic(){
   if (jumlahOrang == 0) {
     Serial.println("Mengirimkan sinyal untuk suhu 30°C...");
     irsend1.sendCOOLIX(coolixData30C, 24);
+    delay(1000);
     irsend2.sendCOOLIX(coolixData30C, 24);
     LastStateIRnum = 30;
     LastStateIRdat = "30C/FAN1/NOSWING/NORMAL";
   } else if (jumlahOrang == 1) {
     Serial.println("Mengirimkan sinyal untuk suhu 29°C...");
     irsend1.sendCOOLIX(coolixData29C, 24);
+    delay(1000);
     irsend2.sendCOOLIX(coolixData29C, 24);
     LastStateIRnum = 29;
     LastStateIRdat = "29C/FAN1/NOSWING/NORMAL";
   } else if (jumlahOrang == 2) {
     Serial.println("Mengirimkan sinyal untuk suhu 29°C...");
     irsend1.sendCOOLIX(coolixData29C, 24);
+    delay(1000);
     irsend2.sendCOOLIX(coolixData29C, 24);
     LastStateIRnum = 29;
     LastStateIRdat = "29C/FAN1/NOSWING/NORMAL";
   } else if (jumlahOrang == 3) {
     Serial.println("Mengirimkan sinyal untuk suhu 28°C...");
     irsend1.sendCOOLIX(coolixData28C, 24);
+    delay(1000);
     irsend2.sendCOOLIX(coolixData28C, 24);
     LastStateIRnum = 28;
     LastStateIRdat = "28C/FAN1/NOSWING/NORMAL";
   } else if (jumlahOrang == 4) {
     Serial.println("Mengirimkan sinyal untuk suhu 28°C...");
     irsend1.sendCOOLIX(coolixData28C, 24);
+    delay(1000);
     irsend2.sendCOOLIX(coolixData28C, 24);
     LastStateIRnum = 28;
     LastStateIRdat = "28C/FAN1/NOSWING/NORMAL";
   } else if (jumlahOrang == 5) {
     Serial.println("Mengirimkan sinyal untuk suhu 27°C...");
     irsend1.sendCOOLIX(coolixData27C, 24);
+    delay(1000);
     irsend2.sendCOOLIX(coolixData27C, 24);
     LastStateIRnum = 27;
     LastStateIRdat = "27C/FAN1/NOSWING/NORMAL";
   } else if (jumlahOrang == 6) {
     Serial.println("Mengirimkan sinyal untuk suhu 27°C...");
     irsend1.sendCOOLIX(coolixData27C, 24);
+    delay(1000);
     irsend2.sendCOOLIX(coolixData27C, 24);
     LastStateIRnum = 27;
     LastStateIRdat = "27C/FAN1/NOSWING/NORMAL";
   } else if (jumlahOrang == 7) {
     Serial.println("Mengirimkan sinyal untuk suhu 26°C...");
     irsend1.sendCOOLIX(coolixData26C, 24);
+    delay(1000);
     irsend2.sendCOOLIX(coolixData26C, 24);
     LastStateIRnum = 26;
     LastStateIRdat = "26C/FAN1/NOSWING/NORMAL";
   } else if (jumlahOrang == 8) {
     Serial.println("Mengirimkan sinyal untuk suhu 25°C...");
     irsend1.sendCOOLIX(coolixData25C, 24);
+    delay(1000);
     irsend2.sendCOOLIX(coolixData25C, 24);
     LastStateIRnum = 25;
     LastStateIRdat = "25C/FAN1/NOSWING/NORMAL";
   } else {
     Serial.println("Jumlah orang tidak sesuai dengan kondisi yang diatur.");
     irsend1.sendCOOLIX(coolixData30C, 24);
+    delay(1000);
     irsend2.sendCOOLIX(coolixData30C, 24);
     LastStateIRnum = 00;
     LastStateIRdat = "30C/FAN1/NOSWING/NORMAL";
@@ -225,10 +255,12 @@ void ReceiveFirebase() {
       Serial.print("Error reading Firebase: ");
       Serial.println(fbdo.errorReason());
       InfoFirebase = "Disconnected!";
+      isFirebaseConnected = false; // Tandai Firebase sebagai terputus
     }
   } else {
     InfoFirebase = "Disconnected!";
     Serial.println("Firebase not ready or WiFi disconnected!");
+    isFirebaseConnected = false;
   }
 }
 
@@ -253,4 +285,5 @@ void loop() {
     sendDataPrevMillis = millis();
     ReceiveFirebase();
   }
+  reconnectFirebase();
 }
